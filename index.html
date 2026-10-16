@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forest Mushroom Hunt - Interactive Speaking Activity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            background-color: #0b1a18;
+        }
+
+        .pixel-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Dark Isometric Forest Background Pattern */
+        .forest-bg {
+            background-color: #0b1c1d;
+            background-image: radial-gradient(circle at 50% 50%, #112d2e 0%, #081314 100%);
+            position: relative;
+        }
+
+        /* Floating Mushroom Sticker Styling */
+        .mushroom-sticker {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
+            filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4));
+            z-index: 10;
+        }
+
+        .mushroom-sticker:hover {
+            transform: scale(1.18) translateY(-6px) rotate(3deg);
+            filter: drop-shadow(0 14px 20px rgba(0,255,170,0.3));
+            z-index: 20;
+        }
+
+        .mushroom-sticker:active {
+            transform: scale(0.95);
+        }
+
+        /* Collect animation */
+        @keyframes collectFly {
+            0% {
+                transform: scale(1) translate(0, 0) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2) translateY(-20px) rotate(-10deg);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0.1) translate(calc(100vw - 100px), calc(100vh - 100px)) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .collecting {
+            animation: collectFly 0.6s ease-in-out forwards;
+            pointer-events: none;
+        }
+
+        /* Custom Modal Backdrop Overlay */
+        .modal-backdrop {
+            background: rgba(5, 12, 14, 0.88);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Glow effects for dark theme */
+        .glow-emerald {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+        }
+
+        .glow-amber {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
+        }
+
+        /* Pixel art canvas rendering crisp pixels */
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-pop {
+            animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative select-none forest-bg overflow-hidden text-emerald-100">
+
+    <!-- Background Tree Decorations -->
+    <div id="forest-decorations" class="absolute inset-0 pointer-events-none opacity-40">
+        <!-- SVG background trees generated dynamically -->
+    </div>
+
+    <!-- Playground Area where 15 Mushroom Stickers spawn -->
+    <main id="forest-playground" class="relative w-full h-full inset-0">
+        <!-- Mushroom stickers will be injected here via JavaScript -->
+    </main>
+
+    <!-- Bottom Right Basket Counter Widget -->
+    <div id="basket-container" class="fixed bottom-4 right-4 z-30 flex flex-col items-center bg-slate-900/90 border border-emerald-500/30 backdrop-blur-md p-3 px-4 rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hidden">
+        <div id="basket-graphic" class="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center">
+            <!-- Dynamic Pixel Art SVG Basket rendered here -->
+        </div>
+        <div class="mt-2 text-center">
+            <span id="basket-counter" class="pixel-font text-xs sm:text-sm text-emerald-400 font-bold tracking-wider">
+                0 / 15
+            </span>
+            <p class="text-[10px] text-emerald-200/60 uppercase tracking-widest font-semibold mt-0.5">Collected</p>
+        </div>
+    </div>
+
+    <!-- Welcome Modal Popup -->
+    <div id="welcome-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-slate-900/95 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl glow-emerald transform transition-all duration-300">
+            <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-2 shadow-inner">
+                <!-- Welcome SVG Icon -->
+                <svg viewBox="0 0 100 100" class="w-16 h-16">
+                    <path d="M50 15 C20 15 15 45 15 55 C15 65 30 65 50 65 C70 65 85 65 85 55 C85 45 80 15 50 15 Z" fill="#ef4444"/>
+                    <ellipse cx="50" cy="62" rx="32" ry="8" fill="#fef2f2"/>
+                    <circle cx="35" cy="35" r="7" fill="#ffffff" opacity="0.9"/>
+                    <circle cx="65" cy="35" r="6" fill="#ffffff" opacity="0.9"/>
+                    <circle cx="50" cy="22" r="5" fill="#ffffff" opacity="0.9"/>
+                    <path d="M38 65 C38 85 42 88 50 88 C58 88 62 85 62 65 Z" fill="#fef3c7"/>
+                    <circle cx="43" cy="72" r="2" fill="#4b5563"/>
+                    <circle cx="57" cy="72" r="2" fill="#4b5563"/>
+                    <path d="M47 77 Q50 80 53 77" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                </svg>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-emerald-300 mb-3 tracking-tight">Mushroom Hunt</h1>
+            <p class="text-slate-300 text-base sm:text-lg mb-8 leading-relaxed font-medium">
+                Welcome to the forest! Please, collect all the mushrooms.
+            </p>
+            <button id="start-btn" class="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-lg rounded-2xl shadow-lg hover:shadow-emerald-500/40 transform active:scale-95 transition duration-150 uppercase tracking-wider">
+                Sure!
+            </button>
+        </div>
+    </div>
+
+    <!-- Question Modal Popup (NO Close button until answered) -->
+    <div id="question-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4 hidden">
+        <div class="bg-slate-900/95 border-2 border-emerald-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl glow-emerald transform transition-all duration-300 relative">
+            
+            <!-- Mushroom Header Illustration -->
+            <div id="modal-mushroom-icon" class="w-20 h-20 mx-auto mb-3 flex items-center justify-center bg-slate-800/80 border border-slate-700/60 rounded-2xl p-2 shadow-md">
+                <!-- Injected dynamically -->
+            </div>
+
+            <!-- Question Number Badge -->
+            <span id="modal-question-num" class="inline-block px-3 py-1 bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-bold uppercase rounded-full mb-3 tracking-wide">
+                Question Prompt
+            </span>
+
+            <!-- Interactive Gap Sentence Area -->
+            <div id="modal-question-container" class="text-base sm:text-lg font-semibold text-slate-100 mb-3 leading-relaxed px-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-left">
+                <!-- Question text and dynamic elements injected here -->
+            </div>
+
+            <!-- Useful Phrases Helper Panel -->
+            <div class="mb-4 p-3 bg-emerald-950/40 rounded-2xl border border-emerald-500/20 text-left">
+                <p class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    Useful Phrases
+                </p>
+                <div class="grid grid-cols-2 gap-1.5 text-[11px] sm:text-xs text-slate-300 font-medium">
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I know for a fact that…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">It’s clearly / obviously…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">It’s bound to…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I’m fairly certain / sure that…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I bet…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I’d guess / imagine…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I’d have thought…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I’m not 100% sure, but I’d say…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">I doubt…</span>
+                    <span class="bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-800">There’s no way…</span>
+                </div>
+            </div>
+
+            <!-- Answer Box (Revealed when Check button is clicked) -->
+            <div id="answer-box" class="hidden mb-4 p-3 bg-amber-950/60 rounded-2xl border border-amber-400/40 text-amber-200 text-sm font-semibold text-center leading-relaxed shadow-inner animate-pop">
+                <span id="answer-text"></span>
+            </div>
+
+            <!-- Riddle Results Box for Secret 16th Mushroom -->
+            <div id="riddle-results" class="hidden mb-4 p-3.5 bg-purple-950/80 rounded-2xl border border-purple-400/40 text-purple-200 text-sm font-medium text-left leading-relaxed shadow-inner animate-pop">
+                <p class="font-bold text-amber-300 mb-1">Answer:</p>
+                <p>The tape was rewound to the beginning! If the man killed himself, he couldn't have rewound the cassette after shooting himself.</p>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div class="flex gap-2">
+                <button id="check-answer-btn" class="w-full py-3.5 px-6 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-slate-950 font-extrabold text-base rounded-xl shadow-lg hover:shadow-teal-500/30 transform active:scale-95 transition duration-150 uppercase tracking-wider flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Check
+                </button>
+                <button id="check-results-btn" class="w-full py-3.5 px-6 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold text-base rounded-xl shadow-lg hover:shadow-amber-500/30 transform active:scale-95 transition duration-150 uppercase tracking-wider hidden flex items-center justify-center gap-2">
+                    Check results
+                </button>
+                <button id="collect-btn" class="w-full py-3.5 px-6 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 font-extrabold text-base rounded-xl shadow-lg hover:shadow-emerald-500/30 transform active:scale-95 transition duration-150 uppercase tracking-wider hidden flex items-center justify-center gap-2 animate-pop">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                    Collect Mushroom
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victory-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4 hidden">
+        <div class="bg-slate-900/95 border-2 border-amber-400/60 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl glow-amber transform transition-all duration-300">
+            <div class="w-24 h-24 mx-auto mb-4 flex items-center justify-center bg-amber-950/60 border border-amber-500/40 rounded-full p-3 shadow-inner animate-pulse">
+                <svg viewBox="0 0 100 100" class="w-20 h-20">
+                    <path d="M25 45 C25 25 75 25 75 45" fill="none" stroke="#854d0e" stroke-width="6"/>
+                    <path d="M15 45 L85 45 L78 85 L22 85 Z" fill="#b45309" stroke="#78350f" stroke-width="3"/>
+                    <circle cx="35" cy="40" r="12" fill="#ef4444"/>
+                    <circle cx="50" cy="35" r="14" fill="#a855f7"/>
+                    <circle cx="65" cy="40" r="12" fill="#f97316"/>
+                    <circle cx="30" cy="30" r="4" fill="#fff"/>
+                    <circle cx="50" cy="25" r="4" fill="#fff"/>
+                    <circle cx="68" cy="32" r="4" fill="#fff"/>
+                </svg>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-amber-300 mb-3 leading-snug">
+                Congratulations, you've collected all the mushrooms for today. See you soon!
+            </h2>
+            <button id="bye-btn" class="w-full mt-4 py-4 px-6 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 font-extrabold text-lg rounded-2xl shadow-lg hover:shadow-amber-500/40 transform active:scale-95 transition duration-150 uppercase tracking-wider">
+                Bye!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Array of 15 New Trivia Questions and Answer Key
+        const questionsData = [
+            { question: "What US city is also known as the Big Apple?", answer: "New York City" },
+            { question: "What is the official language of Lebanon?", answer: "Arabic" },
+            { question: "Which country has the world’s second highest population?", answer: "China (or India depending on recent estimates)" },
+            { question: "In what country would you use money called yen?", answer: "Japan" },
+            { question: "What is the main ingredient in the Peruvian dish ceviche?", answer: "Raw fish (marinated in citrus juice)" },
+            { question: "Which country grows the most bananas?", answer: "India" },
+            { question: "What is the largest country in Africa?", answer: "Algeria" },
+            { question: "Which drink is more popular around the world: coffee or tea?", answer: "Tea" },
+            { question: "Which country has the longest coastline?", answer: "Canada" },
+            { question: "Zagreb is the capital of which European country?", answer: "Croatia" },
+            { question: "Do peanuts grow on trees?", answer: "No, they grow underground" },
+            { question: "Which country eats the most chocolate per person?", answer: "Switzerland" },
+            { question: "Which of these animals has three hearts?", answer: "Octopus (and squid)" },
+            { question: "Which country has the most time zones when its overseas territories are included?", answer: "France (12 time zones)" },
+            { question: "What is the main gas in Earth's atmosphere?", answer: "Nitrogen (about 78%)" }
+        ];
+
+        // 15 Distinct Mushroom Characters with SVG drawings
+        const mushroomSVGDefs = [
+            // 1. Happy Red Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#ef4444" stroke="#991b1b" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fef2f2"/>
+                <circle cx="32" cy="30" r="7" fill="#ffffff"/>
+                <circle cx="68" cy="30" r="7" fill="#ffffff"/>
+                <circle cx="50" cy="22" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="43" cy="68" r="2.5" fill="#1f2937"/>
+                <circle cx="57" cy="68" r="2.5" fill="#1f2937"/>
+                <path d="M45 74 Q50 78 55 74" stroke="#1f2937" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>`,
+
+            // 2. Angry Olive Green Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#65a30d" stroke="#365314" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#f7fee7"/>
+                <circle cx="30" cy="32" r="6" fill="#ecfccb"/>
+                <circle cx="70" cy="32" r="6" fill="#ecfccb"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <path d="M38 64 L46 68" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>
+                <path d="M62 64 L54 68" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="42" cy="70" r="2" fill="#1f2937"/>
+                <circle cx="58" cy="70" r="2" fill="#1f2937"/>
+                <path d="M46 77 Q50 74 54 77" stroke="#1f2937" stroke-width="2" fill="none"/>
+            </svg>`,
+
+            // 3. Sweet Orange Holding Flower
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#f97316" stroke="#9a3412" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fff7ed"/>
+                <circle cx="34" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="66" cy="28" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <ellipse cx="43" cy="68" rx="2" ry="3" fill="#1f2937"/>
+                <ellipse cx="57" cy="68" rx="2" ry="3" fill="#1f2937"/>
+                <circle cx="50" cy="78" r="3" fill="#facc15"/>
+                <circle cx="50" cy="73" r="2" fill="#ffffff"/>
+                <circle cx="50" cy="83" r="2" fill="#ffffff"/>
+                <circle cx="45" cy="78" r="2" fill="#ffffff"/>
+                <circle cx="55" cy="78" r="2" fill="#ffffff"/>
+            </svg>`,
+
+            // 4. Sleeping Purple Mushroom with Pillow
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#a855f7" stroke="#581c87" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#faf5ff"/>
+                <circle cx="32" cy="30" r="6" fill="#e9d5ff"/>
+                <circle cx="68" cy="30" r="6" fill="#e9d5ff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <path d="M40 68 Q43 71 46 68" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <path d="M54 68 Q57 71 60 68" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <text x="70" y="25" fill="#c084fc" font-size="12" font-weight="bold">Z</text>
+                <text x="78" y="16" fill="#c084fc" font-size="9" font-weight="bold">z</text>
+            </svg>`,
+
+            // 5. Surprised Red Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#dc2626" stroke="#7f1d1d" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fef2f2"/>
+                <circle cx="30" cy="28" r="7" fill="#ffffff"/>
+                <circle cx="70" cy="28" r="7" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="43" cy="67" r="3" fill="#1f2937"/>
+                <circle cx="57" cy="67" r="3" fill="#1f2937"/>
+                <ellipse cx="50" cy="75" rx="3" ry="5" fill="#1f2937"/>
+            </svg>`,
+
+            // 6. Sad Brown Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#78350f" stroke="#451a03" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fffbeb"/>
+                <circle cx="35" cy="30" r="6" fill="#fde68a"/>
+                <circle cx="65" cy="30" r="6" fill="#fde68a"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="42" cy="68" r="2.5" fill="#1f2937"/>
+                <circle cx="58" cy="68" r="2.5" fill="#1f2937"/>
+                <path d="M46 76 Q50 72 54 76" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <path d="M62 72 Q64 76 62 78 Q60 76 62 72" fill="#38bdf8"/>
+            </svg>`,
+
+            // 7. Cool Sunglasses Blue Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#2563eb" stroke="#1e3a8a" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#eff6ff"/>
+                <circle cx="30" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="70" cy="28" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <rect x="36" y="64" width="12" height="8" rx="2" fill="#1e293b"/>
+                <rect x="52" y="64" width="12" height="8" rx="2" fill="#1e293b"/>
+                <line x1="48" y1="66" x2="52" y2="66" stroke="#1e293b" stroke-width="2"/>
+                <path d="M45 76 Q50 79 55 76" stroke="#1f2937" stroke-width="2" fill="none"/>
+            </svg>`,
+
+            // 8. Pink Mushroom with Leaf Umbrella
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#ec4899" stroke="#831843" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fdf2f8"/>
+                <circle cx="32" cy="30" r="6" fill="#ffffff"/>
+                <circle cx="68" cy="30" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="43" cy="68" r="2" fill="#1f2937"/>
+                <circle cx="57" cy="68" r="2" fill="#1f2937"/>
+                <path d="M46 73 Q50 76 54 73" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <path d="M62 70 Q75 50 85 58 Q72 65 62 70" fill="#22c55e"/>
+            </svg>`,
+
+            // 9. Winking Yellow Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#eab308" stroke="#713f12" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fefce8"/>
+                <circle cx="35" cy="30" r="6" fill="#ffffff"/>
+                <circle cx="65" cy="30" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="42" cy="68" r="2.5" fill="#1f2937"/>
+                <path d="M55 68 L61 68" stroke="#1f2937" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M45 74 Q50 78 55 74" stroke="#1f2937" stroke-width="2" fill="none"/>
+            </svg>`,
+
+            // 10. Teal Peaceful Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#14b8a6" stroke="#0f766e" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#f0fdfa"/>
+                <circle cx="34" cy="28" r="6" fill="#ccfbf1"/>
+                <circle cx="66" cy="28" r="6" fill="#ccfbf1"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <path d="M39 68 Q43 64 46 68" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <path d="M54 68 Q57 64 61 68" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <path d="M47 74 Q50 77 53 74" stroke="#1f2937" stroke-width="2" fill="none"/>
+            </svg>`,
+
+            // 11. Dizzy Lavender Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#8b5cf6" stroke="#4c1d95" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#f5f3ff"/>
+                <circle cx="30" cy="30" r="6" fill="#ddd6fe"/>
+                <circle cx="70" cy="30" r="6" fill="#ddd6fe"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <text x="39" y="71" font-size="10" font-weight="bold" fill="#1f2937">@</text>
+                <text x="54" y="71" font-size="10" font-weight="bold" fill="#1f2937">@</text>
+                <path d="M46 76 Q50 74 54 76" stroke="#1f2937" stroke-width="2" fill="none"/>
+            </svg>`,
+
+            // 12. Fierce Red Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#b91c1c" stroke="#450a0a" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fef2f2"/>
+                <circle cx="32" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="68" cy="28" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="43" cy="69" r="2.5" fill="#1f2937"/>
+                <circle cx="57" cy="69" r="2.5" fill="#1f2937"/>
+                <path d="M45 76 Q50 72 55 76" stroke="#1f2937" stroke-width="2" fill="none"/>
+            </svg>`,
+
+            // 13. Cozy Mushroom Drinking Tea
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#d97706" stroke="#78350f" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fffbeb"/>
+                <circle cx="35" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="65" cy="28" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <path d="M40 67 Q43 64 46 67" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <path d="M54 67 Q57 64 60 67" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <rect x="46" y="73" width="8" height="7" rx="2" fill="#38bdf8"/>
+            </svg>`,
+
+            // 14. Anxious Violet Mushroom
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#6d28d9" stroke="#2e1065" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#f5f3ff"/>
+                <circle cx="34" cy="28" r="6" fill="#ede9fe"/>
+                <circle cx="66" cy="28" r="6" fill="#ede9fe"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="43" cy="68" r="3" fill="#1f2937"/>
+                <circle cx="57" cy="68" r="3" fill="#1f2937"/>
+                <ellipse cx="50" cy="76" rx="4" ry="2" fill="#1f2937"/>
+            </svg>`,
+
+            // 15. Adventurer Red Mushroom with Backpack
+            `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20">
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="#ef4444" stroke="#991b1b" stroke-width="3"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fef2f2"/>
+                <circle cx="32" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="68" cy="28" r="6" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+                <circle cx="43" cy="67" r="2" fill="#1f2937"/>
+                <circle cx="57" cy="67" r="2" fill="#1f2937"/>
+                <path d="M46 72 Q50 76 54 72" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <rect x="62" y="68" width="8" height="12" rx="2" fill="#15803d"/>
+            </svg>`
+        ];
+
+        // Secret 16th Mushroom Golden SVG Design
+        const secretMushroomSVG = `
+            <svg viewBox="0 0 100 100" class="w-20 h-20 sm:w-24 sm:h-24 animate-bounce">
+                <defs>
+                    <radialGradient id="goldGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#fef08a"/>
+                        <stop offset="100%" stop-color="#eab308"/>
+                    </radialGradient>
+                </defs>
+                <circle cx="50" cy="50" r="45" fill="rgba(234, 179, 8, 0.2)" class="animate-pulse"/>
+                <path d="M50 12 C20 12 12 42 12 55 C12 62 30 62 50 62 C70 62 88 62 88 55 C88 42 80 12 50 12 Z" fill="url(#goldGlow)" stroke="#a16207" stroke-width="3.5"/>
+                <ellipse cx="50" cy="58" rx="35" ry="7" fill="#fefce8"/>
+                <circle cx="32" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="68" cy="28" r="6" fill="#ffffff"/>
+                <circle cx="50" cy="22" r="5" fill="#ffffff"/>
+                <path d="M36 58 C36 82 42 86 50 86 C58 86 64 82 64 58 Z" fill="#fef3c7" stroke="#ca8a04" stroke-width="2.5"/>
+                <circle cx="43" cy="67" r="2.5" fill="#1f2937"/>
+                <circle cx="57" cy="67" r="2.5" fill="#1f2937"/>
+                <path d="M46 73 Q50 78 54 73" stroke="#1f2937" stroke-width="2" fill="none"/>
+                <!-- Crown -->
+                <path d="M40 12 L44 4 L50 9 L56 4 L60 12 Z" fill="#facc15" stroke="#854d0e" stroke-width="1.5"/>
+            </svg>
+        `;
+
+        // 4 Threshold States: 0-4 (Empty), 5-9 (1/3 Full), 10-14 (Half Full), 15-16 (Full)
+        function getBasketSVG(count) {
+            const baseBasket = `
+                <!-- Pixel Basket Handle -->
+                <path d="M 25 45 L 25 25 L 75 25 L 75 45 L 67 45 L 67 33 L 33 33 L 33 45 Z" fill="#78350f"/>
+                <path d="M 29 29 L 71 29 L 71 33 L 29 33 Z" fill="#b45309"/>
+                <!-- Basket Body -->
+                <path d="M 15 45 L 85 45 L 77 85 L 23 85 Z" fill="#b45309"/>
+                <path d="M 15 45 L 85 45 L 85 52 L 15 52 Z" fill="#d97706"/>
+                <path d="M 17 47 L 83 47 L 83 50 L 17 50 Z" fill="#f59e0b"/>
+                <!-- Basket Weave Lines -->
+                <path d="M 25 55 L 75 55 M 27 65 L 73 65 M 29 75 L 71 75" stroke="#78350f" stroke-width="2.5" stroke-dasharray="6 4"/>
+            `;
+
+            let contents = "";
+
+            if (count >= 15) {
+                // Photo 6: Full overflowing basket
+                contents = `
+                    <g>
+                        <circle cx="28" cy="38" r="10" fill="#ef4444"/>
+                        <circle cx="42" cy="30" r="12" fill="#a855f7"/>
+                        <circle cx="58" cy="28" r="11" fill="#ef4444"/>
+                        <circle cx="72" cy="36" r="10" fill="#f97316"/>
+                        <circle cx="35" cy="42" r="9" fill="#14b8a6"/>
+                        <circle cx="50" cy="40" r="11" fill="#eab308"/>
+                        <circle cx="65" cy="42" r="9" fill="#8b5cf6"/>
+                        <circle cx="26" cy="35" r="3" fill="#fff"/>
+                        <circle cx="42" cy="25" r="3.5" fill="#fff"/>
+                        <circle cx="58" cy="24" r="3" fill="#fff"/>
+                        <circle cx="73" cy="33" r="3" fill="#fff"/>
+                        <circle cx="50" cy="35" r="3.5" fill="#fff"/>
+                    </g>
+                `;
+            } else if (count >= 10) {
+                // Photo 5: Half full basket
+                contents = `
+                    <g>
+                        <circle cx="32" cy="42" r="9" fill="#ef4444"/>
+                        <circle cx="48" cy="38" r="10" fill="#a855f7"/>
+                        <circle cx="64" cy="41" r="9" fill="#ef4444"/>
+                        <circle cx="40" cy="45" r="8" fill="#f97316"/>
+                        <circle cx="56" cy="44" r="8" fill="#14b8a6"/>
+                        <circle cx="32" cy="39" r="2.5" fill="#fff"/>
+                        <circle cx="48" cy="34" r="3" fill="#fff"/>
+                        <circle cx="64" cy="38" r="2.5" fill="#fff"/>
+                    </g>
+                `;
+            } else if (count >= 5) {
+                // Photo 4: 1/3 full basket
+                contents = `
+                    <g>
+                        <circle cx="35" cy="45" r="7" fill="#ef4444"/>
+                        <circle cx="50" cy="43" r="8" fill="#ef4444"/>
+                        <circle cx="63" cy="46" r="6" fill="#ef4444"/>
+                        <circle cx="35" cy="43" r="2" fill="#fff"/>
+                        <circle cx="50" cy="40" r="2.5" fill="#fff"/>
+                    </g>
+                `;
+            } else {
+                // Photo 3: Empty basket (0-4)
+                contents = "";
+            }
+
+            return `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                ${contents}
+                ${baseBasket}
+            </svg>`;
+        }
+
+        // State Machine
+        let state = {
+            collectedCount: 0,
+            activeMushroomIndex: null,
+            mushroomData: [],
+            secretSpawned: false
+        };
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function generateRandomPositions(count) {
+            const positions = [];
+            const margin = 12;
+            const minDistance = 14;
+
+            let attempts = 0;
+            while (positions.length < count && attempts < 2000) {
+                attempts++;
+                const x = margin + Math.random() * (100 - margin * 2 - 8);
+                const y = margin + Math.random() * (100 - margin * 2 - 12);
+
+                let tooClose = false;
+                for (const pos of positions) {
+                    const dist = Math.hypot(pos.x - x, pos.y - y);
+                    if (dist < minDistance) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) {
+                    positions.push({ x, y });
+                }
+            }
+
+            while (positions.length < count) {
+                const i = positions.length;
+                const col = i % 5;
+                const row = Math.floor(i / 5);
+                positions.push({
+                    x: 15 + col * 18,
+                    y: 18 + row * 24
+                });
+            }
+
+            return positions;
+        }
+
+        function renderBackgroundForest() {
+            const container = document.getElementById('forest-decorations');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < 22; i++) {
+                const tree = document.createElement('div');
+                tree.className = 'absolute pointer-events-none opacity-25 transform -translate-x-1/2 -translate-y-1/2';
+                const left = Math.random() * 96 + 2;
+                const top = Math.random() * 96 + 2;
+                const scale = 0.6 + Math.random() * 0.7;
+
+                tree.style.left = `${left}%`;
+                tree.style.top = `${top}%`;
+                tree.style.transform = `scale(${scale})`;
+
+                tree.innerHTML = `
+                    <svg width="70" height="90" viewBox="0 0 70 90">
+                        <polygon points="35,5 15,35 25,35 10,60 22,60 5,80 65,80 48,60 60,60 45,35 55,35" fill="#10b981"/>
+                        <rect x="30" y="80" width="10" height="10" fill="#78350f"/>
+                    </svg>
+                `;
+                container.appendChild(tree);
+            }
+        }
+
+        function initGame() {
+            state.collectedCount = 0;
+            state.activeMushroomIndex = null;
+            state.secretSpawned = false;
+
+            updateBasketDisplay();
+
+            const shuffledQuestions = shuffle([...questionsData]);
+            const shuffledSVGs = shuffle([...mushroomSVGDefs]);
+            const positions = generateRandomPositions(15);
+
+            state.mushroomData = [];
+
+            for (let i = 0; i < 15; i++) {
+                state.mushroomData.push({
+                    id: i,
+                    qObj: shuffledQuestions[i],
+                    svg: shuffledSVGs[i],
+                    collected: false,
+                    x: positions[i].x,
+                    y: positions[i].y,
+                    isSecret: false
+                });
+            }
+
+            renderMushroomStickers();
+        }
+
+        function renderMushroomStickers() {
+            const playground = document.getElementById('forest-playground');
+            playground.innerHTML = '';
+
+            state.mushroomData.forEach((mush, index) => {
+                if (mush.collected) return;
+
+                const sticker = document.createElement('div');
+                sticker.className = 'mushroom-sticker';
+                sticker.style.left = `${mush.x}%`;
+                sticker.style.top = `${mush.y}%`;
+                sticker.setAttribute('data-id', index);
+                sticker.innerHTML = mush.svg;
+
+                sticker.addEventListener('click', () => {
+                    openQuestionModal(index);
+                });
+
+                playground.appendChild(sticker);
+            });
+        }
+
+        function spawnSecretMushroom() {
+            state.secretSpawned = true;
+            const secretIndex = 15;
+
+            const secretMush = {
+                id: secretIndex,
+                qObj: {
+                    isSecretRiddle: true,
+                    text: `A man is found dead in his office. Next to him is a cassette recorder. The detective presses PLAY. The recording says:<br><br><em>“I can't go on anymore. I'm going to kill myself.”</em> Then there is a gunshot.<br><br>The detective immediately knows it was murder, not suicide. <strong>How?</strong>`
+                },
+                svg: secretMushroomSVG,
+                collected: false,
+                x: 43,
+                y: 40,
+                isSecret: true
+            };
+
+            state.mushroomData.push(secretMush);
+
+            const playground = document.getElementById('forest-playground');
+            const sticker = document.createElement('div');
+            sticker.className = 'mushroom-sticker animate-pop cursor-pointer';
+            sticker.style.left = `${secretMush.x}%`;
+            sticker.style.top = `${secretMush.y}%`;
+            sticker.style.zIndex = '30';
+            sticker.setAttribute('data-id', secretIndex);
+            sticker.innerHTML = secretMush.svg;
+
+            sticker.addEventListener('click', () => {
+                openQuestionModal(secretIndex);
+            });
+
+            playground.appendChild(sticker);
+        }
+
+        // Normalize text string for flexible student input evaluation
+        function normalizeString(str) {
+            return str
+                .toLowerCase()
+                .replace(/’|`/g, "'") // replace smart apostrophes
+                .replace(/\s+/g, ' ') // collapse multiple spaces
+                .trim();
+        }
+
+        function openQuestionModal(index) {
+            state.activeMushroomIndex = index;
+            const mush = state.mushroomData[index];
+            const q = mush.qObj;
+
+            document.getElementById('modal-mushroom-icon').innerHTML = mush.svg;
+            document.getElementById('modal-question-num').innerText = mush.isSecret ? "Secret Riddle!" : `Question #${index + 1}`;
+            
+            const qContainer = document.getElementById('modal-question-container');
+            const answerBox = document.getElementById('answer-box');
+            const checkBtn = document.getElementById('check-answer-btn');
+            const collectBtn = document.getElementById('collect-btn');
+            const checkResultsBtn = document.getElementById('check-results-btn');
+            const riddleResults = document.getElementById('riddle-results');
+
+            // Reset modal states
+            collectBtn.classList.add('hidden');
+            checkResultsBtn.classList.add('hidden');
+            riddleResults.classList.add('hidden');
+            answerBox.classList.add('hidden');
+
+            if (mush.isSecret) {
+                // 16th Secret Mushroom Riddle Layout
+                qContainer.className = 'text-sm sm:text-base font-semibold text-slate-100 mb-3 leading-relaxed px-3 bg-slate-950/80 p-4 rounded-2xl border border-amber-500/30 text-left';
+                qContainer.innerHTML = q.text;
+
+                checkBtn.classList.add('hidden');
+                checkResultsBtn.classList.remove('hidden');
+            } else {
+                // Standard Question layout
+                qContainer.className = 'text-base sm:text-lg font-bold text-emerald-200 mb-3 leading-relaxed px-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-center';
+                qContainer.innerHTML = q.question;
+
+                checkBtn.classList.remove('hidden');
+            }
+
+            document.getElementById('question-modal').classList.remove('hidden');
+        }
+
+        function updateBasketDisplay() {
+            const counter = document.getElementById('basket-counter');
+            const graphicContainer = document.getElementById('basket-graphic');
+
+            const displayCount = Math.min(state.collectedCount, 15);
+            counter.innerText = `${displayCount} / 15`;
+            graphicContainer.innerHTML = getBasketSVG(displayCount);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBackgroundForest();
+
+            document.getElementById('start-btn').addEventListener('click', () => {
+                document.getElementById('welcome-modal').classList.add('hidden');
+                document.getElementById('basket-container').classList.remove('hidden');
+                initGame();
+            });
+
+            // Check button logic for standard 15 trivia questions
+            document.getElementById('check-answer-btn').addEventListener('click', () => {
+                if (state.activeMushroomIndex === null) return;
+                const mush = state.mushroomData[state.activeMushroomIndex];
+                
+                const answerBox = document.getElementById('answer-box');
+                document.getElementById('answer-text').innerHTML = `Answer: <strong>${mush.qObj.answer}</strong>`;
+                answerBox.classList.remove('hidden');
+
+                document.getElementById('check-answer-btn').classList.add('hidden');
+                document.getElementById('collect-btn').classList.remove('hidden');
+            });
+
+            // Check results button handler for secret 16th mushroom
+            document.getElementById('check-results-btn').addEventListener('click', () => {
+                document.getElementById('check-results-btn').classList.add('hidden');
+                document.getElementById('riddle-results').classList.remove('hidden');
+                document.getElementById('collect-btn').classList.remove('hidden');
+            });
+
+            // Function to handle collecting the active mushroom
+            function collectActiveMushroom() {
+                if (state.activeMushroomIndex === null) return;
+
+                const index = state.activeMushroomIndex;
+                const mush = state.mushroomData[index];
+
+                if (!mush.collected) {
+                    mush.collected = true;
+
+                    // Only count non-secret mushrooms towards the main count
+                    if (!mush.isSecret) {
+                        state.collectedCount++;
+                    }
+
+                    // Animate and remove sticker from playground
+                    const sticker = document.querySelector(`.mushroom-sticker[data-id="${index}"]`);
+                    if (sticker) {
+                        sticker.classList.add('collecting');
+                        setTimeout(() => {
+                            sticker.remove();
+                        }, 600);
+                    }
+
+                    updateBasketDisplay();
+
+                    // Spawn secret golden mushroom if 15 mushrooms collected
+                    if (state.collectedCount === 15 && !state.secretSpawned) {
+                        setTimeout(() => {
+                            spawnSecretMushroom();
+                        }, 700);
+                    }
+                }
+
+                // Hide question modal
+                document.getElementById('question-modal').classList.add('hidden');
+                state.activeMushroomIndex = null;
+
+                // Trigger victory modal if all standard mushrooms are collected (or secret completed)
+                if (state.collectedCount >= 15 && (!mush.isSecret || state.secretSpawned)) {
+                    if (mush.isSecret) {
+                        setTimeout(() => {
+                            document.getElementById('victory-modal').classList.remove('hidden');
+                        }, 800);
+                    }
+                }
+            }
+
+            // Collect Button inside Modal
+            document.getElementById('collect-btn').addEventListener('click', collectActiveMushroom);
+
+            // Bye button on final popup closes popup or reloads screen
+            document.getElementById('bye-btn').addEventListener('click', () => {
+                document.getElementById('victory-modal').classList.add('hidden');
+                location.reload();
+            });
+        });
+    </script>
+</body>
+</html>
